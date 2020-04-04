@@ -15,7 +15,7 @@ public class Server
     public static void main(String[] args) throws IOException  
     { 
         // server is listening on port 1234 
-        ServerSocket ss = new ServerSocket(1234); 
+        ServerSocket ss = new ServerSocket(9311); 
           
         Socket s; 
           
@@ -26,13 +26,13 @@ public class Server
             // Accept the incoming request 
             s = ss.accept(); 
   
-            System.out.println("New client request received : " + s); 
+            System.out.println("New client request received from: " + s); 
               
             // obtain input and output streams 
             DataInputStream dis = new DataInputStream(s.getInputStream()); 
             DataOutputStream dos = new DataOutputStream(s.getOutputStream()); 
               
-            System.out.println("Creating a new handler for this client..."); 
+            //System.out.println("Creating a new handler for this client..."); 
   
             // Create a new handler object for handling this request. 
             ClientHandler mtch = new ClientHandler(s,"client " + i, dis, dos); 
@@ -49,8 +49,6 @@ public class Server
             t.start(); 
   
             // increment i for new client. 
-            // i is used for naming only, and can be replaced 
-            // by any naming scheme 
             i++; 
   
         } 
@@ -93,34 +91,74 @@ class ClientHandler implements Runnable
                   
                 if(received.equals("exit!")){ 
                     this.connected=false; 
-                    this.s.close(); 
+                    this.dos.writeUTF("You are leaving the caht!");
+                    //this.s.close();
+                    
+           
                     break; 
                 } 
 
                 if(received.equals("list!")){
-                    for (ClientHandler mc : Server.ar){
-                        mc.dos.writeUTF(this.name+":"+s );
+                    for (ClientHandler mc : Server.ar ){
+                        if(mc.name != this.name && mc.connected==true){
+                            this.dos.writeUTF(mc.name+":"+ mc.s);
+                        }
+                        
                     }
                      
                 }
-                  
-                // break the string into message and recipient part 
-                StringTokenizer st = new StringTokenizer(received, "#"); 
-                String MsgToSend = st.nextToken(); 
-                String recipient = st.nextToken(); 
-  
-                // search for the recipient in the connected devices list. 
-                // ar is the vector storing client of active users 
-                for (ClientHandler mc : Server.ar)  
-                { 
-                    // if the recipient is found, write on its 
-                    // output stream 
-                    if (mc.name.equals(recipient) && mc.connected==true)  
-                    { 
-                        mc.dos.writeUTF(this.name+" : "+MsgToSend); 
-                        break; 
-                    } 
+                 
+                 if(received.startsWith("terminate!")){ 
+                        //s = Socket(ip, ServerPort) ;
+                        String msg1 = received.replaceFirst("terminate! ", "");
+                        for (ClientHandler mc : Server.ar ){
+                            if(mc.name == msg1 && mc.connected==true){
+                                this.dos.writeUTF(mc.name+"is disconnected");
+                                mc.dos.writeUTF("You are removed from the chat");
+                                mc.connected = false;
+                        }
+                        
+                    }
+                        //msg1 = msg1.replaceAll(" ", "");      
+                        StringTokenizer st = new StringTokenizer(msg1, ":");
+                        String recipient = st.nextToken();  
+                        String MsgToSend = st.nextToken(); 
                 } 
+                // break the string into message and recipient part 
+                if(received.startsWith("send!")){ 
+                        //s = Socket(ip, ServerPort) ;
+                        String msg1 = received.replaceFirst("send! ", "");
+                        //msg1 = msg1.replaceAll(" ", "");
+                        if(msg1.contains(":")){
+                            StringTokenizer st = new StringTokenizer(msg1, ":");
+                            String recipient = st.nextToken();  
+                            String MsgToSend = st.nextToken(); 
+                                            // search for the recipient in the connected devices list. 
+                            // ar is the vector storing client of active users 
+                            for (ClientHandler mc : Server.ar)  
+                            { 
+                                // if the recipient is found, write on its 
+                                // output stream 
+                                if (mc.name.equals(recipient) )  
+                                { 
+                                    if( mc.connected==true){
+                                    mc.dos.writeUTF(this.name+" : "+MsgToSend); 
+                                    break; 
+                                }
+                                    else{
+                                        this.dos.writeUTF("Not connected to this client or wrong format");
+                                    }
+                       
+                                } 
+                            } 
+                        }
+                        else{
+                             this.dos.writeUTF("wrong format");
+                        }
+                   
+  
+
+                }
             } catch (IOException e) { 
                   
                 e.printStackTrace(); 
